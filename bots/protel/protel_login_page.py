@@ -3,6 +3,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
+
 class ProtelLoginPage:
     def __init__(self, driver):
         self.url = "https://condominio.protel.com.br/login"    
@@ -26,11 +27,11 @@ class ProtelLoginPage:
             btn_ok_e.click()
             print("Preencheu username, password e clicou em ok.")
 
-            if self.is_ivalid_login():
+            if self.is_invalid_login():
                 print(f"Login inválido para o usuário {username}")
                 return False
             else:
-                print(f"Login bem-sucedido para o usuário {username}")
+                return True
 
         except TimeoutException:
             print("O tempo de espera foi excedido. Um ou mais elementos não foram encontrados na página.") 
@@ -39,9 +40,9 @@ class ProtelLoginPage:
         except Exception as e:
             print(f"Ocorreu um erro inesperado durante o login: {e}")
 
-    def is_ivalid_login(self):
+    def is_invalid_login(self):
         try:
-            wait = WebDriverWait(self.driver, 20)
+            wait = WebDriverWait(self.driver, 5)
             invalid_login_message_e = wait.until(EC.presence_of_element_located(self.invalid_login_message_locator))
             return True
         except:
