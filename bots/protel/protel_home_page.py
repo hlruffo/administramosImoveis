@@ -27,4 +27,4 @@ class ProtelHomePage:
             btn_segunda_via_e.click()
             print("Botão de segunda via clicado com sucesso.")
         except Exception as e:
-            print(f"Erro ao clicar no botao segunda via {e}")
+            print(f"Erro ao clicar no botão segunda via: {e}")
