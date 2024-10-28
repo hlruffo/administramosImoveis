@@ -13,6 +13,15 @@ AWS_ACCESS_KEY_ID = "REDACTED_AWS_VALUE"
 AWS_SECRET_ACCESS_KEY = "REDACTED_AWS_VALUE"
 REGION_NAME = "us-east-1"
 
+def get_latest_pdf(download_dir, extensions=[".pdf", ".png"]):
+    files = []
+    for ext in extensions:
+        files.extend(glob.glob(os.path.join(download_dir, f"*{ext}")))
+    if not files:
+        return None
+    latest_file = max(files, key=os.path.getctime)
+    return latest_file
+
 def extract_linha_digitavel_pymupdf(pdf_path):
     try:
 
@@ -56,16 +65,8 @@ def delete_all_files_in_directory(download_dir):
             print(f"Erro ao remover o arquivo {file}: {e}")
 
 def get_downloaded_files(download_dir):
+    # Retorna a lista de arquivos na pasta 'download_dir'
     return {f for f in os.listdir(download_dir) if os.path.isfile(os.path.join(download_dir, f))}
-
-def get_latest_pdf(download_dir):
-    list_of_files = glob.glob(os.path.join(download_dir, "*.pdf"))
-    
-    if not list_of_files:
-        raise FileNotFoundError("Nenhum arquivo PDF encontrado na pasta de downloads.")
-
-    latest_file = max(list_of_files, key=os.path.getctime)
-    return latest_file
 
 def wait_for_new_file(download_dir, previous_files, timeout=60):
     start_time = time.time()
@@ -171,9 +172,8 @@ class DynamoDBQuery:
             response = self.dynamodb.execute_statement(Statement=query)
             return response.get("Items", [])
         except Exception as e:
-            #print(f"Erro ao executar a consulta: {e}")
+            print(f"Erro ao executar a consulta: {e}")
             return None
-
 
 def save_rpa_reports(reports: list[dict], administadora: str):
     s3_client = boto3.client(
@@ -196,13 +196,12 @@ def save_rpa_reports(reports: list[dict], administadora: str):
 
     try:
         s3_client.upload_file(temp_file, bucket_name, object_name)
-        print(f"Arquivo(Report) enviado para S3: s3://{bucket_name}/{object_name}")
+        print(f"Arquivo enviado para S3: s3://{bucket_name}/{object_name}")
     except Exception as e:
         print(f"Erro ao enviar o arquivo para S3: {e}")
     finally:
         if os.path.exists(temp_file):
             os.remove(temp_file)
-
 
 def save_boletos(pdf_file_path: str, administadora: str):
     s3_client = boto3.client(
@@ -212,26 +211,24 @@ def save_boletos(pdf_file_path: str, administadora: str):
         region_name=REGION_NAME,
     )
 
-    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-        temp_file_path = temp_file.name
-
-    os.replace(pdf_file_path, temp_file_path)
+    temp_dir = tempfile.gettempdir()
+    temp_file = os.path.join(temp_dir, os.path.basename(pdf_file_path))
+    os.replace(pdf_file_path, temp_file)
 
     data_atual = datetime.now().strftime("%Y_%m_%d")
     bucket_name = "administramosimoveis-rpa-observability"
-    object_name = f"{administadora}/{data_atual}/{os.path.basename(temp_file_path)}"
+    object_name = f"{administadora}/{data_atual}/{os.path.basename(temp_file)}"
 
     try:
-        s3_client.upload_file(temp_file_path, bucket_name, object_name)
-        s3_url = f"s3://{bucket_name}/{object_name}"
-        print(f"Arquivo(Boleto) enviado para S3: s3://{bucket_name}/{object_name}")
-        return s3_url
+        s3_client.upload_file(temp_file, bucket_name, object_name)
+        print(f"Arquivo enviado para S3: s3://{bucket_name}/{object_name}")
+        return f"s3://{bucket_name}/{object_name}"
     except Exception as e:
         print(f"Erro ao enviar o arquivo para S3: {e}")
         return None
     finally:
-        if os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
 
 
 #### SAVE PDF
